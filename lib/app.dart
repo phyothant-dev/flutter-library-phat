@@ -31,10 +31,8 @@ final router = GoRouter(
       path: '/reader/:id',
       builder: (_, state) {
         final book = state.extra as Book;
-        final localPath = state.uri.queryParameters['localPath'];
         return PdfReaderPage(
           book: book,
-          localPath: localPath,
         );
       },
     ),

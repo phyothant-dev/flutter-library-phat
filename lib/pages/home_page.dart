@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/book.dart';
 import '../providers/book_list_provider.dart';
 import '../widgets/book_card.dart';
 import '../widgets/shimmer_book_card.dart';
@@ -49,6 +50,10 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
+  Future<void> _onRefresh() {
+    return ref.read(bookListProvider.notifier).refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -56,81 +61,108 @@ class _HomePageState extends ConsumerState<HomePage> {
     final filtered = state.filtered;
 
     return Scaffold(
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          SliverAppBar(
-            floating: true,
-            pinned: false,
-            snap: false,
-            backgroundColor: theme.colorScheme.surface,
-            surfaceTintColor: theme.colorScheme.surfaceTint,
-            scrolledUnderElevation: 0,
-            flexibleSpace: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 24, right: 8),
-                child: SizedBox(
-                  height: 72,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'ဖတ်',
-                            style: GoogleFonts.ebGaramond(
-                              fontSize: 40,
-                              fontWeight: FontWeight.w800,
-                              fontStyle: FontStyle.italic,
-                              letterSpacing: 0.12,
-                              height: 1.2,
-                              color: theme.colorScheme.primary,
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          controller: _scrollController,
+          slivers: [
+            SliverAppBar(
+              floating: true,
+              pinned: false,
+              snap: false,
+              backgroundColor: theme.colorScheme.surface,
+              surfaceTintColor: theme.colorScheme.surfaceTint,
+              scrolledUnderElevation: 0,
+              flexibleSpace: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 24, right: 8),
+                  child: SizedBox(
+                    height: 72,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(28),
+                              child: Image.asset(
+                                'assets/logo.png',
+                                width: 56,
+                                height: 56,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.favorite_border_rounded,
-                          color: theme.colorScheme.outline,
+                        IconButton(
+                          icon: Icon(
+                            Icons.favorite_border_rounded,
+                            color: theme.colorScheme.outline,
+                          ),
+                          onPressed: () => context.push('/credits'),
                         ),
-                        onPressed: () => context.push('/credits'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (state.status == LoadStatus.error && state.books.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.wifi_off_rounded, size: 18,
+                          color: theme.colorScheme.onErrorContainer),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Showing cached books — no internet connection',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.colorScheme.onErrorContainer,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  _buildSearchBar(theme),
-                  const SizedBox(height: 16),
-                  _buildGenreChips(theme, state.genre),
-                  const SizedBox(height: 40),
-                ],
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+                    _buildSearchBar(theme),
+                    const SizedBox(height: 16),
+                    _buildGenreChips(theme, state.genre),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
-          ),
-          _buildBody(theme, state, filtered),
-        ],
+            _buildBody(theme, state, filtered),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildBody(ThemeData theme, BookListState state, List<dynamic> filtered) {
+  Widget _buildBody(ThemeData theme, BookListState state, List<Book> filtered) {
     switch (state.status) {
       case LoadStatus.initial:
       case LoadStatus.loading:
         return SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           sliver: SliverGrid(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               childAspectRatio: 0.7,
               crossAxisSpacing: 16,
@@ -144,24 +176,26 @@ class _HomePageState extends ConsumerState<HomePage> {
         );
 
       case LoadStatus.error:
-        return SliverFillRemaining(
-          hasScrollBody: false,
+        return SliverToBoxAdapter(
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.wifi_off_rounded, size: 48, color: theme.colorScheme.error),
-                  const SizedBox(height: 12),
-                  Text(state.error ?? 'Something went wrong',
-                      style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
-                  const SizedBox(height: 16),
-                  FilledButton.tonal(
-                    onPressed: () => ref.read(bookListProvider.notifier).refresh(),
-                    child: const Text('Retry'),
-                  ),
-                ],
+              padding: const EdgeInsets.symmetric(vertical: 48),
+              child: GestureDetector(
+                onTap: () => ref.read(bookListProvider.notifier).refresh(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.wifi_off_rounded, size: 32,
+                        color: theme.colorScheme.outline),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tap to retry',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -191,7 +225,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         return SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           sliver: SliverGrid(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               childAspectRatio: 0.7,
               crossAxisSpacing: 16,
@@ -217,7 +251,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(100),
         border: Border.all(
           color: theme.colorScheme.outlineVariant,
           width: 1,

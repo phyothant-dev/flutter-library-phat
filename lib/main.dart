@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -24,5 +25,10 @@ void main() async {
     debugPrint('Supabase init skipped: $e');
   }
 
-  runApp(const ProviderScope(child: PhatApp()));
+  runZonedGuarded(
+    () => runApp(const ProviderScope(child: PhatApp())),
+    (error, stack) {
+      debugPrint('Unhandled error: $error\n$stack');
+    },
+  );
 }

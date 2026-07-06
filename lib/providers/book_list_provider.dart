@@ -64,6 +64,7 @@ class BookListNotifier extends StateNotifier<BookListState> {
   final _bookService = BookService();
   final _localDb = LocalDbService();
   Timer? _debounce;
+  bool _loading = false;
 
   void search(String query) {
     _debounce?.cancel();
@@ -78,47 +79,61 @@ class BookListNotifier extends StateNotifier<BookListState> {
     state = state.copyWith(genre: genre);
   }
 
-  final int _pageSize = 20;
+  static const int _pageSize = 20;
 
   Future<void> _load() async {
+    if (_loading) return;
+    _loading = true;
     state = state.copyWith(status: LoadStatus.loading);
 
+    final cached = await _localDb.getCachedBooks();
+    if (cached.isNotEmpty) {
+      state = state.copyWith(
+        books: cached,
+        status: LoadStatus.loaded,
+        hasMore: cached.length >= _pageSize,
+        page: 1,
+      );
+    }
+
     try {
-      final books = await _bookService.getBooks(from: 0, to: _pageSize - 1);
+      final books = await _bookService
+          .getBooks(from: 0, to: _pageSize - 1)
+          .timeout(const Duration(seconds: 10));
       await _localDb.cacheBooks(books);
       state = state.copyWith(
         books: books,
         status: LoadStatus.loaded,
         hasMore: books.length >= _pageSize,
         page: 1,
+        error: null,
       );
     } catch (e) {
-      final cached = await _localDb.getCachedBooks();
-      if (cached.isNotEmpty) {
-        state = state.copyWith(
-          books: cached,
-          status: LoadStatus.loaded,
-          error: null,
-        );
-      } else {
+      if (cached.isEmpty) {
         state = state.copyWith(
           status: LoadStatus.error,
           error: e.toString(),
         );
       }
+    } finally {
+      _loading = false;
     }
   }
 
   Future<void> loadMore() async {
     if (state.status == LoadStatus.loadingMore || !state.hasMore) return;
 
-    state = state.copyWith(status: LoadStatus.loadingMore);
     final nextPage = state.page;
+    if (nextPage == 0) return;
+
+    state = state.copyWith(status: LoadStatus.loadingMore);
 
     try {
       final from = nextPage * _pageSize;
       final to = from + _pageSize - 1;
-      final nextBooks = await _bookService.getBooks(from: from, to: to);
+      final nextBooks = await _bookService
+          .getBooks(from: from, to: to)
+          .timeout(const Duration(seconds: 10));
       state = state.copyWith(
         books: [...state.books, ...nextBooks],
         status: LoadStatus.loaded,
@@ -130,7 +145,7 @@ class BookListNotifier extends StateNotifier<BookListState> {
     }
   }
 
-  void refresh() => _load();
+  Future<void> refresh() => _load();
 }
 
 final bookListProvider =

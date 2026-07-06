@@ -25,5 +25,13 @@ class SupabaseConfig {
     );
   }
 
-  static SupabaseClient get client => Supabase.instance.client;
+  static SupabaseClient get client {
+    if (!isConfigured) {
+      throw StateError(
+        'Supabase not configured. Create .env with SUPABASE_URL and SUPABASE_ANON_KEY, '
+        'or pass --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...',
+      );
+    }
+    return Supabase.instance.client;
+  }
 }

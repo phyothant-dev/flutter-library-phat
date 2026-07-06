@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/credit.dart';
 
 class CreditDetailPage extends StatelessWidget {
@@ -41,16 +42,44 @@ class CreditDetailPage extends StatelessWidget {
                           color: theme.colorScheme.secondaryContainer,
                           shape: BoxShape.circle,
                         ),
-                        child: Center(
-                          child: Text(
-                            credit.initials,
-                            style: GoogleFonts.ebGaramond(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w700,
-                              color: theme.colorScheme.onSecondaryContainer,
-                            ),
-                          ),
-                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: credit.imageUrl.isNotEmpty
+                            ? (credit.imageUrl.startsWith('assets/')
+                                ? Image.asset(credit.imageUrl, fit: BoxFit.cover)
+                                : CachedNetworkImage(
+                                    imageUrl: credit.imageUrl,
+                                    fit: BoxFit.cover,
+                                    placeholder: (_, __) => Center(
+                                      child: SizedBox(
+                                        width: 32,
+                                        height: 32,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: theme.colorScheme.secondary,
+                                        ),
+                                      ),
+                                    ),
+                                    errorWidget: (_, __, ___) => Center(
+                                      child: Text(
+                                        credit.initials,
+                                        style: GoogleFonts.ebGaramond(
+                                          fontSize: 32,
+                                          fontWeight: FontWeight.w700,
+                                          color: theme.colorScheme.onSecondaryContainer,
+                                        ),
+                                      ),
+                                    ),
+                                  ))
+                            : Center(
+                                child: Text(
+                                  credit.initials,
+                                  style: GoogleFonts.ebGaramond(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w700,
+                                    color: theme.colorScheme.onSecondaryContainer,
+                                  ),
+                                ),
+                              ),
                       ),
                       const SizedBox(height: 16),
                       Text(
