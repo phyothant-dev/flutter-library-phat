@@ -152,7 +152,7 @@ This app exists thanks to the amazing authors and their contributions to the Mya
 
 | Author | Role |
 |--------|------|
-| [Ei Maung](https://eimaung.com) | Web Developer & Author (18+ books) |
+| [Ei Maung](https://eimaung.com) | Web Developer & Author |
 | [Lwin Moe Paing](https://lwinmoepaing.com) | Frontend Developer & Author |
 | [Saturngod](https://github.com/saturngod) | Developer & Open Source Creator |
 | [Thet Khine](https://thetkhine.medium.com) | Developer & Technical Writer |
